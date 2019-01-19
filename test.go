@@ -1,10 +1,11 @@
 package main
 
 import (
-	"DNSTest/dns"
 	"bytes"
 	"fmt"
 	"net"
+
+	"github.com/Evan2698/Simple-DNS/dns"
 )
 
 func main() {
@@ -188,19 +189,27 @@ func main() {
 
 		datag := buffer[:n]
 
+		//1. header
 		header := dns.NewDNSHeader()
 		header.TryFrom(datag)
 		header.SetQR(true)
+		header.SetRA(true)
+		header.SetRD(true)
+		//header.SetTC(true)
+		header.SetOPCode(0)
 		header.SetRCODE(0)
 		header.SetANCount(1)
 		header.SetQDCount(1)
+		header.SetARCount(1)
 
+		// 2. question
 		qs := dns.NewDNSQuery()
 		qs.TryFrom(datag[12:])
 
 		out := bytes.NewBuffer(header.Pack())
 		out.Write(qs.Pack())
 
+		//3. answer
 		as := &dns.AnswerDNS{}
 		as.Name = []byte{0xc0, 0x0c}
 		as.Type = 1
@@ -212,6 +221,16 @@ func main() {
 		ok := (dns.Answer)(as)
 		out.Write(ok.Pack())
 
+		//4. EDNS
+		rs := &dns.AnswerDNS{}
+		rs.Name = []byte{0x00}
+		rs.Type = 41
+		rs.Class = 0
+		rs.TTL = 0
+		rs.RDLen = 0
+		rs.RDATA = nil
+		ok = (dns.Answer)(rs)
+		out.Write(ok.Pack())
 		pc.WriteTo(out.Bytes(), addr)
 	}
 

@@ -159,28 +159,29 @@ func (h *dnsheader) SetARCount(c uint16) {
 func (h *dnsheader) Pack() []byte {
 
 	var s uint16
-	s = h.RCODE << 12
-	s = s + (h.Z << 9)
-	if h.RA {
-		s = s + (1 << 8)
+	if h.QR {
+		s = 1 << 15
 	}
 
-	if h.RD {
-		s = s + (1 << 7)
+	s = s + ((h.OPCODE & 0xf) << 11)
+
+	if h.AA {
+		s = s + (1 << 10)
 	}
 
 	if h.TC {
-		s = s + (1 << 6)
+		s = s + (1 << 9)
 	}
 
-	if h.AA {
-		s = s + (1 << 5)
+	if h.RD {
+		s = s + (1 << 8)
 	}
 
-	s = s + (h.OPCODE << 1)
-	if h.QR {
-		s = s + 1
+	if h.RA {
+		s = s + (1 << 7)
 	}
+
+	s = s + (h.RCODE & 0xf)
 
 	var buffer bytes.Buffer
 	binary.Write(&buffer, binary.BigEndian, h.ID)
@@ -211,14 +212,14 @@ func (h *dnsheader) TryFrom(buf []byte) error {
 	binary.Read(out, binary.BigEndian, &h.NSCOUNT)
 	binary.Read(out, binary.BigEndian, &h.ARCOUNT)
 
-	h.RCODE = (s >> 12) & 0xf
-	h.Z = (s >> 9) & 0x7
-	h.RA = truetable[((s >> 8) & 0x1)]
-	h.RD = truetable[((s >> 7) & 0x1)]
-	h.TC = truetable[((s >> 6) & 0x1)]
-	h.AA = truetable[((s >> 5) & 0x1)]
-	h.OPCODE = (s >> 1) & 0x4
-	h.QR = truetable[(s & 0x1)]
+	h.RCODE = s & 0xf
+	h.Z = (s >> 4) & 0x7
+	h.RA = truetable[((s >> 7) & 0x1)]
+	h.RD = truetable[((s >> 8) & 0x1)]
+	h.TC = truetable[((s >> 9) & 0x1)]
+	h.AA = truetable[((s >> 10) & 0x1)]
+	h.OPCODE = (s >> 11) & 0x4
+	h.QR = truetable[((s >> 15) & 0x1)]
 
 	return nil
 }
